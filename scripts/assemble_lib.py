@@ -28,7 +28,7 @@ html,body{margin:0;background:transparent}body{width:1080px;height:1920px;positi
 .n .t{bottom:760px;font-size:62px}.hook .t{top:300px;font-size:88px}.quote .t{bottom:760px;font-size:68px}
 .cta .t{top:760px;font-size:78px}.cta b{color:#ffd9ec}.note .t{top:300px;font-size:50px}.note .t span{background:rgba(255,255,255,.82);color:#2a2a3a;text-shadow:none}"""
 
-def build(name, chars, T, segs):
+def build(name, chars, T, segs, audio=None):
     """chars {key: shot}, T [(start,end,avatar|None,subtitle|None,style)], segs [(bg_path,dur,extra_vf)]"""
     B=f"build/{name}"; os.makedirs(B,exist_ok=True)
     for k,v in chars.items(): avatar(f"assets/characters/{v}.png",f"{B}/av_{k}.png")
@@ -55,3 +55,10 @@ def build(name, chars, T, segs):
     os.makedirs("out",exist_ok=True); tot=sum(d for _,d,_ in segs)
     subprocess.run(["ffmpeg","-y","-loglevel","error",*inputs,"-filter_complex",";".join(flt),"-map",f"[{last}]","-r",str(FPS),"-c:v","libx264","-preset","veryfast","-crf","20","-pix_fmt","yuv420p","-t",str(tot),f"out/{name}_draft_silent.mp4"],check=True)
     print("ok",f"out/{name}_draft_silent.mp4")
+    if audio:
+        ins=[];fl=[]
+        for i,(f,st) in enumerate(audio):
+            ins+=["-i",f]; ms=int(st*1000); fl.append(f"[{i+1}:a]adelay={ms}|{ms},volume=1.0[a{i}]")
+        mix="".join(f"[a{i}]" for i in range(len(audio)))+f"amix=inputs={len(audio)}:normalize=0:duration=longest,apad,atrim=0:{tot}[aout]"
+        subprocess.run(["ffmpeg","-y","-loglevel","error","-i",f"out/{name}_draft_silent.mp4",*ins,"-filter_complex",";".join(fl)+";"+mix,"-map","0:v","-map","[aout]","-c:v","copy","-c:a","aac","-b:a","160k","-shortest",f"out/{name}_draft_voice.mp4"],check=True)
+        print("ok",f"out/{name}_draft_voice.mp4")
