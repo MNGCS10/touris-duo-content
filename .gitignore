@@ -3,3 +3,4 @@ kie-config.json
 .env
 out/
 node_modules/
+build/
